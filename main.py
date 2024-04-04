@@ -1,16 +1,17 @@
-from fastapi import Depends, FastAPI, HTTPException, Form
+from fastapi import Depends, FastAPI, HTTPException, Request
 from sqlalchemy.orm import Session
-from database_operation import get_db
-from models import User, UserCreate, UserLogin, Text
+from database_operation import get_db, get_class_by_id
+from models import User, UserCreate, UserLogin, Text, ClassCreate, Classes
 from database import SessionLocal, engine, Base
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
 import jwt
 import secrets
+import random
 
 SECRET_KEY = secrets.token_urlsafe(32)
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 5
+ACCESS_TOKEN_EXPIRE_MINUTES = 10
 
 Base.metadata.create_all(bind=engine)
 
@@ -75,10 +76,36 @@ def login_user(user_login: UserLogin, db: Session = Depends(get_db)):
 
 
 
+def get_class_name_by_id(db: Session, class_id: int):
+    class_info = get_class_by_id(db, class_id)
+    if class_info:
+        return class_info.className
+    else:
+        return "Class not found"
+
 @app.post("/predict")
-def predict_text(text: Text):
-    predicted_result = f"Received text: {text.text}. This is just a placeholder response."
-    return {"result": predicted_result}
+async def predict_text(request: Request, db: Session = Depends(get_db)):
+    data = await request.json()
+    text = data.get('text', '') 
+    
+    random_number = random.randint(1, 7)
+    class_name = get_class_name_by_id(db, random_number)
+  
+    #predicted_result = f"Received text: {text}. Random number between 1 and 7: {random_number}. Class name: {class_name}"  
+    return {"text": text, "class": class_name}
+
+
+@app.post("/create_class/")
+def create_class(class_data: ClassCreate, db: Session = Depends(get_db)):
+    class_name = class_data.className
+    
+    new_class = Classes(className=class_name)
+    db.add(new_class)
+    db.commit()
+    db.refresh(new_class)
+    
+    return {"message": "Class created successfully", "class_name": class_name}
+
 
 
 # bu endpoint auth gerektirir
