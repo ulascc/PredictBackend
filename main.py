@@ -1,17 +1,14 @@
+from constants import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 from fastapi import Depends, FastAPI, HTTPException, Request
-from sqlalchemy.orm import Session
 from database_operation import get_db, get_class_by_id
-from models import User, UserCreate, UserLogin, Text, ClassCreate, Classes
-from database import SessionLocal, engine, Base
+from schemas import UserCreate, UserLogin, ClassCreate
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
-import jwt
-import secrets
+from sqlalchemy.orm import Session
+from database import engine, Base
+from models import User, Classes
 import random
-
-SECRET_KEY = secrets.token_urlsafe(32)
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 10
+import jwt
 
 Base.metadata.create_all(bind=engine)
 
@@ -24,6 +21,7 @@ app.add_middleware(
     allow_methods=["*"],  
     allow_headers=["*"],
 )
+
 
 def create_access_token(data: dict):
     to_encode = data.copy()
@@ -71,7 +69,7 @@ def login_user(user_login: UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Geçersiz e-posta veya şifre")
     
     # Kullanıcının kimliği doğrulanmışsa access token oluştur ve return et
-    access_token = create_access_token(data={"email": user.email})
+    access_token = create_access_token(data={"email": user.email, "name": user.fullname})
     return {"access_token": access_token, "token_type": "bearer", "status": 200, "message": "Başarıyla giriş yapıldı"}
 
 
@@ -108,7 +106,7 @@ def create_class(class_data: ClassCreate, db: Session = Depends(get_db)):
 
 
 
-# bu endpoint auth gerektirir
+# bu endpoint auth gerektirir ÖRNEK
 @app.get("/protected/")
 def protected_route(token: str = Depends(decode_access_token)):
     if not token:
