@@ -1,10 +1,18 @@
 from pydantic import BaseModel
+from typing import Optional
+from passlib.hash import sha256_crypt 
 
 class UserCreate(BaseModel):
     fullname: str
     email: str
     password: str
-    user_type: str = "standard"
+    user_type: Optional[str] = "standard"
+
+    def hash_password(self):
+        self.password = hash_password(self.password)
+
+def hash_password(password: str):
+    return sha256_crypt.hash(password)
 
 
 class UserLogin(BaseModel):
@@ -18,3 +26,6 @@ class ClassCreate(BaseModel):
 
 class Text(BaseModel):
     text: str
+
+class UserType(BaseModel):
+    type: str

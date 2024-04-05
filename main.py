@@ -4,6 +4,7 @@ from database_operation import get_db, get_class_by_id
 from schemas import UserCreate, UserLogin, ClassCreate
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
+from passlib.hash import sha256_crypt
 from sqlalchemy.orm import Session
 from database import engine, Base
 from models import User, Classes
@@ -21,6 +22,10 @@ app.add_middleware(
     allow_methods=["*"],  
     allow_headers=["*"],
 )
+
+# Şifre kontrol fonksiyonu
+def verify_password(plain_password: str, hashed_password: str):
+    return sha256_crypt.verify(plain_password, hashed_password)
 
 
 def create_access_token(data: dict):
@@ -42,12 +47,14 @@ def decode_access_token(token: str):
         return None
     
 
+
 @app.post("/register/")
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
     try:
         if db.query(User).filter(User.email == user.email).first():
             raise HTTPException(status_code=400, detail="Bu e-posta adresi zaten mevcut")
 
+        user.hash_password()  
         db_user = User(**user.dict())
         db.add(db_user)
         db.commit()
@@ -65,12 +72,12 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
 def login_user(user_login: UserLogin, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == user_login.email).first()
 
-    if not user or user.password != user_login.password:
+    if not user or not verify_password(user_login.password, user.password):
         raise HTTPException(status_code=401, detail="Geçersiz e-posta veya şifre")
     
-    # Kullanıcının kimliği doğrulanmışsa access token oluştur ve return et
     access_token = create_access_token(data={"email": user.email, "name": user.fullname})
-    return {"access_token": access_token, "token_type": "bearer", "status": 200, "message": "Başarıyla giriş yapıldı"}
+    return {"access_token": access_token, "token_type": "bearer", "status": 200, "message": "SHA256 - SUCCESSFUL"}
+
 
 
 
@@ -80,6 +87,8 @@ def get_class_name_by_id(db: Session, class_id: int):
         return class_info.className
     else:
         return "Class not found"
+
+
 
 @app.post("/predict")
 async def predict_text(request: Request, db: Session = Depends(get_db)):
@@ -91,6 +100,8 @@ async def predict_text(request: Request, db: Session = Depends(get_db)):
   
     #predicted_result = f"Received text: {text}. Random number between 1 and 7: {random_number}. Class name: {class_name}"  
     return {"text": text, "class": class_name}
+
+
 
 
 @app.post("/create_class/")
