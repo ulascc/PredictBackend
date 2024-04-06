@@ -6,7 +6,6 @@ class UserCreate(BaseModel):
     fullname: str
     email: str
     password: str
-    user_type: Optional[str] = "standard"
 
     def hash_password(self):
         self.password = hash_password(self.password)
@@ -26,6 +25,7 @@ class ClassCreate(BaseModel):
 
 class Text(BaseModel):
     text: str
+    
 
-class UserType(BaseModel):
-    type: str
+class UserTypeCreate(BaseModel):
+    user_type_name: str

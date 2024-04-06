@@ -1,6 +1,6 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy.orm import relationship
 from database import Base
-from pydantic import BaseModel
 
 class Classes(Base):
     __tablename__ = "classes"
@@ -16,4 +16,17 @@ class User(Base):
     fullname = Column(String, index=True)
     email = Column(String, unique=True, index=True)
     password = Column(String)
-    user_type = Column(String, default="standart")
+    user_type_id = Column(Integer, ForeignKey('user_types.id'))
+
+    user_type = relationship("UserType", back_populates="users")
+
+
+
+class UserType(Base):
+    __tablename__ = "user_types"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_type_name = Column(String, unique=True, index=True)
+
+    users = relationship("User", back_populates="user_type")
+    

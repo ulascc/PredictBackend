@@ -1,13 +1,13 @@
 from constants import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+from schemas import UserCreate, UserLogin, ClassCreate, UserTypeCreate
 from fastapi import Depends, FastAPI, HTTPException, Request
 from database_operation import get_db, get_class_by_id
-from schemas import UserCreate, UserLogin, ClassCreate
 from fastapi.middleware.cors import CORSMiddleware
+from models import User, Classes, UserType
 from datetime import datetime, timedelta
 from passlib.hash import sha256_crypt
 from sqlalchemy.orm import Session
 from database import engine, Base
-from models import User, Classes
 import random
 import jwt
 
@@ -51,21 +51,26 @@ def decode_access_token(token: str):
 @app.post("/register/")
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
     try:
+        print(user.dict())  # İsteği kontrol etmek için
         if db.query(User).filter(User.email == user.email).first():
             raise HTTPException(status_code=400, detail="Bu e-posta adresi zaten mevcut")
 
         user.hash_password()  
-        db_user = User(**user.dict())
+        db_user = User(**user.dict(), user_type_id=1)  # Default user_type_id: 1
+
         db.add(db_user)
         db.commit()
         db.refresh(db_user)
 
-        return db_user
+        return db_user 
     
     except HTTPException as e:
         raise e
-    except Exception:
+    except Exception as ex:
+        print(ex)  # Hata mesajını kontrol etmek için
         raise HTTPException(status_code=500, detail="Beklenmeyen bir sorun ile karşılaşıldı")
+
+
 
 
 @app.post("/login/")
@@ -114,6 +119,17 @@ def create_class(class_data: ClassCreate, db: Session = Depends(get_db)):
     db.refresh(new_class)
     
     return {"message": "Class created successfully", "class_name": class_name}
+
+
+
+
+@app.post("/user_types/")
+def create_user_type(user_type: UserTypeCreate, db: Session = Depends(get_db)):
+    db_user_type = UserType(**user_type.dict())
+    db.add(db_user_type)
+    db.commit()
+    db.refresh(db_user_type)
+    return db_user_type
 
 
 
