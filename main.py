@@ -80,8 +80,13 @@ def login_user(user_login: UserLogin, db: Session = Depends(get_db)):
     if not user or not verify_password(user_login.password, user.password):
         raise HTTPException(status_code=401, detail="Geçersiz e-posta veya şifre")
     
-    access_token = create_access_token(data={"email": user.email, "name": user.fullname})
+    access_token = None
+    if user.user_type_id == 1:  # Standart kullanıcı
+        access_token = create_access_token(data={"email": user.email, "name": user.fullname, "user_type": "standard"})
+    elif user.user_type_id == 2:  # Admin kullanıcı
+        access_token = create_access_token(data={"email": user.email, "name": user.fullname, "user_type": "admin"})
     return {"access_token": access_token, "token_type": "bearer", "status": 200, "message": "SHA256 - SUCCESSFUL"}
+
 
 
 
