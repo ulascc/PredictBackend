@@ -1,13 +1,14 @@
 from constants import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 from schemas import UserCreate, UserLogin, ClassCreate, UserTypeCreate
 from fastapi import Depends, FastAPI, HTTPException, Request
+from models import User, Classes, UserType, PredictionLogs
 from database_operation import get_db, get_class_by_id
 from fastapi.middleware.cors import CORSMiddleware
-from models import User, Classes, UserType
 from datetime import datetime, timedelta
 from passlib.hash import sha256_crypt
 from sqlalchemy.orm import Session
 from database import engine, Base
+from fastapi import Request
 import random
 import jwt
 
@@ -46,6 +47,18 @@ def decode_access_token(token: str):
     except jwt.JWTError:
         return None
     
+def decode_jwt(token: str) -> int:
+    try:
+        # Token'ı decode eder
+        payload = jwt.decode(token, options={"verify_signature": False})
+        
+        user_id = payload.get("user_id")
+        if user_id is None:
+            raise ValueError("Invalid token: user_id not found in payload")
+        return user_id
+    except jwt.InvalidTokenError:
+        raise ValueError("Invalid token")
+    
 
 
 @app.post("/register/")
@@ -67,7 +80,7 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     except HTTPException as e:
         raise e
     except Exception as ex:
-        print(ex)  # Hata mesajını kontrol etmek için
+        print(ex)  
         raise HTTPException(status_code=500, detail="Beklenmeyen bir sorun ile karşılaşıldı")
 
 
@@ -82,9 +95,9 @@ def login_user(user_login: UserLogin, db: Session = Depends(get_db)):
     
     access_token = None
     if user.user_type_id == 1:  # Standart kullanıcı
-        access_token = create_access_token(data={"email": user.email, "name": user.fullname, "user_type": "standard"})
+        access_token = create_access_token(data={"email": user.email, "name": user.fullname, "user_type": "standard","user_id": user.id})
     elif user.user_type_id == 2:  # Admin kullanıcı
-        access_token = create_access_token(data={"email": user.email, "name": user.fullname, "user_type": "admin"})
+        access_token = create_access_token(data={"email": user.email, "name": user.fullname, "user_type": "admin", "user_id": user.id})
     return {"access_token": access_token, "token_type": "bearer", "status": 200, "message": "SHA256 - SUCCESSFUL"}
 
 
@@ -102,16 +115,49 @@ def get_class_name_by_id(db: Session, class_id: int):
 
 @app.post("/predict")
 async def predict_text(request: Request, db: Session = Depends(get_db)):
+    
+    request_at = datetime.now()
+    
     data = await request.json()
     text = data.get('text', '') 
+    token = data.get('token', '') 
     
     random_number = random.randint(1, 7)
     class_name = get_class_name_by_id(db, random_number)
-  
-    #predicted_result = f"Received text: {text}. Random number between 1 and 7: {random_number}. Class name: {class_name}"  
-    return {"text": text, "class": class_name}
+    
+    user_id = decode_jwt(token)
+    
+    
+    response_data = {"text": text, "class": class_name}
+    
+    response_time = datetime.now()
+    response_ms = (response_time - request_at).total_seconds() * 1000   # Yanıt süresi (milisaniye cinsinden)
+    
+    predictionLog = PredictionLogs(
+        request_at=request_at,
+        response_ms=response_ms,
+        path="/predict",
+        view="predict_text",
+        method="POST",
+        #payload=json.dumps(data),
+        #response=json.dumps(response_data),
+        payload=text,
+        response=class_name,
+        status_code=200,
+        user_id=user_id
+        )
+    
+    # Kullanıcı kimliğini ve metni prediction_logs tablosuna kaydet
+    db.add(predictionLog)
+    db.commit()
+    
+    return  response_data
 
 
+@app.get("/get-prediction-logs/")
+def get_prediction_logs(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+    prediction_logs = db.query(PredictionLogs).offset(skip).limit(limit).all()
+    return prediction_logs
 
 
 @app.post("/create_class/")
