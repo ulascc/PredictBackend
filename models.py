@@ -1,15 +1,16 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float
 from sqlalchemy.orm import relationship
 from database import Base
-from sqlalchemy import JSON
 
 class Classes(Base):
     __tablename__ = "classes"
 
     id = Column(Integer, primary_key=True, index=True)
     className = Column(String, index=True)
-    
-    
+    prediction_logs = relationship("PredictionLogs", back_populates="class_")
+
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -31,21 +32,23 @@ class UserType(Base):
     user_type_name = Column(String, unique=True, index=True)
 
     users = relationship("User", back_populates="user_type")
-    
-    
+
+
 
 class PredictionLogs(Base):
     __tablename__ = "prediction_logs"
 
     id = Column(Integer, primary_key=True, index=True)
-    request_at = Column(DateTime)  # İstek tarihi/saati
-    response_ms = Column(Float)  # Yanıt süresi (milisaniye cinsinden) INTEGER
-    path = Column(String)  # API URL yolu
-    view = Column(String)  # Görüntü adı
-    method = Column(String)  # HTTP yöntemi (GET, POST, vb.)
-    payload = Column(String)  # İstek verisi (JSON formatında)
-    response = Column(String)  # Yanıt verisi (JSON formatında)
-    status_code = Column(Integer)  # HTTP durum kodu
-    user_id = Column(Integer, ForeignKey('users.id'))  # Kullanıcı kimliği
+    request_at = Column(DateTime) 
+    response_ms = Column(Float) 
+    path = Column(String) 
+    view = Column(String) 
+    method = Column(String) 
+    payload = Column(String) 
+    response = Column(String) 
+    status_code = Column(Integer)  
+    user_id = Column(Integer, ForeignKey('users.id')) 
+    class_id = Column(Integer, ForeignKey('classes.id')) 
 
     user = relationship("User", back_populates="prediction_logs")
+    class_ = relationship("Classes", back_populates="prediction_logs")

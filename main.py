@@ -2,13 +2,13 @@ from helpers import create_class_in_db, create_user_type_in_db, fetch_prediction
 from constants import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 from schemas import UserCreate, UserLogin, ClassCreate, UserTypeCreate
 from fastapi import Depends, FastAPI, HTTPException, Request
-from models import User
 from database_operation import get_db, get_class_by_id
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from database import engine, Base
 from datetime import datetime
 from fastapi import Request
+from models import User
 import random
 
 Base.metadata.create_all(bind=engine)
@@ -76,13 +76,14 @@ async def predict_text(request: Request, db: Session = Depends(get_db)):
         
         random_number = random.randint(1, 7)
         class_name = get_class_by_id(db, random_number)
+        class_id = random_number
         
         user_id = decode_jwt(token)   
         response_data = {"text": text, "class": class_name}   
         response_time = datetime.now()
         response_ms = "{:.2f}".format((response_time - request_at).total_seconds() * 1000)
         
-        prediction_log(request_at, response_ms, text, class_name, 200, user_id, db)
+        prediction_log(request_at, response_ms, text, class_name, 200, user_id, class_id, db)
         
         return response_data
     

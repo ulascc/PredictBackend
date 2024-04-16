@@ -1,14 +1,14 @@
-from fastapi import Depends
 from constants import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
-from datetime import datetime, timedelta
-from passlib.hash import sha256_crypt
-from sqlalchemy.orm import Session
-from sqlalchemy import Integer
-import jwt
-from database_operation import get_db
-
 from models import PredictionLogs, UserType, Classes
 from schemas import UserTypeCreate, ClassCreate
+from datetime import datetime, timedelta
+from passlib.hash import sha256_crypt
+from database_operation import get_db
+from sqlalchemy.orm import Session
+from sqlalchemy import Integer
+from fastapi import Depends
+import jwt
+
 
 # Şifre kontrol fonksiyonu
 def verify_password(plain_password: str, hashed_password: str):
@@ -40,7 +40,7 @@ def decode_jwt(token: str) -> int:
     
 
     
-def prediction_log(request_at: datetime, response_ms: float, text: str, class_name: str, status_code: Integer, user_id: str, db: Session):
+def prediction_log(request_at: datetime, response_ms: float, text: str, class_name: str, status_code: Integer, user_id: str, class_id: Integer, db: Session):
     prediction_log = PredictionLogs(
         request_at=request_at,
         response_ms=response_ms,
@@ -50,7 +50,8 @@ def prediction_log(request_at: datetime, response_ms: float, text: str, class_na
         payload=text,
         response=class_name,
         status_code=status_code,
-        user_id=user_id
+        user_id=user_id,
+        class_id=class_id
     )
     db.add(prediction_log)
     db.commit()
