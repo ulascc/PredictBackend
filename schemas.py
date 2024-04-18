@@ -1,5 +1,4 @@
 from pydantic import BaseModel
-from typing import Optional
 from passlib.hash import sha256_crypt 
 
 class UserCreate(BaseModel):
