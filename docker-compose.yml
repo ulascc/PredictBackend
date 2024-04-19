@@ -1,20 +1,35 @@
 version: '3'
 
 services:
-  fastapi:
+  fastapi-app:
     build:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8080:8080" 
-    depends_on:
-      - db
-
-  db:
-    image: postgres:latest
+      - "8001:8080"
+    environment:
+      SQLALCHEMY_DATABASE_URL: "postgresql://postgres:1234@postgres/PredictDB"
+  postgres:
+    image: postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 1234
       POSTGRES_DB: PredictDB
     ports:
-      - "5433:5432" 
+      - "5433:5432"
+    volumes:
+      - ./data:/var/lib/postgresql/data
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin4_container
+    restart: always
+    ports:
+      - "8888:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: 1234
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+
+volumes:
+  pgadmin-data:
