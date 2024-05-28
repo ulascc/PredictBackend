@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from passlib.hash import sha256_crypt
 from sqlalchemy.orm import Session
 from sqlalchemy import Integer
+from typing import List
 import random
 import jwt
 
@@ -139,6 +140,30 @@ async def process_prediction(request: Request, db: Session):
 def fetch_prediction_logs_from_db(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
     prediction_logs = db.query(PredictionLogs).offset(skip).limit(limit).all()
     return prediction_logs
+
+
+def fetch_prediction_logs_by_id(user_id: int, db: Session):
+    try:
+        prediction_logs = db.query(PredictionLogs).filter(PredictionLogs.user_id == user_id).all()
+        if not prediction_logs:
+            return []
+        return prediction_logs
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Bir hata oluştu: " + str(e))
+    
+    
+def delete_prediction_logs(log_ids: List[int], db: Session):
+    try:
+        deleted_count = 0
+        for log_id in log_ids:
+            log = db.query(PredictionLogs).filter(PredictionLogs.id == log_id).first()
+            if log:
+                db.delete(log)
+                deleted_count += 1
+        db.commit()
+        return {"message": f"{deleted_count} prediction logs deleted successfully."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
     
     
 def create_user_type_in_db(user_type: UserTypeCreate, db: Session):
